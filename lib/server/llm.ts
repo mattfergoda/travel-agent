@@ -103,10 +103,7 @@ export async function streamAssistantResponse(input: { state: AppState; userMess
   const result = streamText({
     model,
     system: buildAssistantSystemPrompt(input),
-    messages: [
-      ...input.state.messages.slice(-8).map((message) => ({ role: message.role, content: message.content } as const)),
-      { role: "user", content: input.userMessage },
-    ],
+    messages: input.state.messages.slice(-8).map((message) => ({ role: message.role, content: message.content } as const)),
     onFinish() {
       logEvent("llm.stream.finish", { latencyMs: Date.now() - started, model: getProviderStatus().model });
     },

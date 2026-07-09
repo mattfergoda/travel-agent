@@ -1,6 +1,21 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { buildAssistantSystemPrompt, getProviderStatus } from "@/lib/server/llm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildAssistantSystemPrompt, getProviderStatus, streamAssistantResponse } from "@/lib/server/llm";
 import { AppStateSchema, type ExtractionResult } from "@/lib/shared/schemas";
+
+const llmMocks = vi.hoisted(() => ({
+  createOpenAICompatible: vi.fn(() => vi.fn((model: string) => ({ model }))),
+  generateObject: vi.fn(),
+  streamText: vi.fn(() => ({ textStream: (async function* emptyStream() {})() })),
+}));
+
+vi.mock("@ai-sdk/openai-compatible", () => ({
+  createOpenAICompatible: llmMocks.createOpenAICompatible,
+}));
+
+vi.mock("ai", () => ({
+  generateObject: llmMocks.generateObject,
+  streamText: llmMocks.streamText,
+}));
 
 const originalApiKey = process.env.OPENROUTER_API_KEY;
 const originalModel = process.env.LLM_MODEL;
@@ -10,6 +25,9 @@ beforeEach(() => {
   delete process.env.OPENROUTER_API_KEY;
   delete process.env.LLM_MODEL;
   delete process.env.LLM_BASE_URL;
+  llmMocks.createOpenAICompatible.mockClear();
+  llmMocks.generateObject.mockClear();
+  llmMocks.streamText.mockClear();
 });
 
 afterEach(() => {
@@ -81,5 +99,40 @@ describe("buildAssistantSystemPrompt", () => {
     expect(prompt).toContain("Denver");
     expect(prompt).toContain("Tokyo");
     expect(prompt).toContain("Ask about trip length.");
+  });
+});
+
+describe("streamAssistantResponse", () => {
+  it("uses recent state messages without appending the latest user message twice", async () => {
+    process.env.OPENROUTER_API_KEY = "test-key";
+    const state = AppStateSchema.parse({
+      profile: {},
+      messages: [
+        { id: "message-1", role: "assistant", content: "Where do you want to go?", createdAt: "2026-01-01T00:00:00.000Z" },
+        { id: "message-2", role: "user", content: "I like Tokyo", createdAt: "2026-01-01T00:01:00.000Z" },
+      ],
+      conflicts: [],
+    });
+    const extraction: ExtractionResult = {
+      profilePatch: {},
+      conflicts: [],
+      destinationMentions: ["Tokyo"],
+      resolvedConflictIds: [],
+      notesForAssistant: "Mention Tokyo.",
+    };
+
+    await streamAssistantResponse({
+      state,
+      userMessage: "I like Tokyo",
+      destinationResults: [{ name: "Tokyo", info: null }],
+      extraction,
+    });
+
+    expect(llmMocks.streamText).toHaveBeenCalledWith(expect.objectContaining({
+      messages: [
+        { role: "assistant", content: "Where do you want to go?" },
+        { role: "user", content: "I like Tokyo" },
+      ],
+    }));
   });
 });
