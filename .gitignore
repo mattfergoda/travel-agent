@@ -8,3 +8,4 @@ coverage/
 data/
 *.log
 .superpowers/
+tsconfig.tsbuildinfo
