@@ -81,3 +81,12 @@ Targeted tests cover destination lookup, zod schemas, persistence, and profile m
 ## At Scale
 
 For 10k requests/hour, I would move profile and chat state to Postgres, add request tracing and structured model logs, introduce extraction evals before model changes, separate streaming chat from background profile extraction when latency matters, and add provider fallbacks/rate-limit handling.
+
+## Process Transcripts
+
+This was built across two sessions/tools, both exported in full to `transcripts/`:
+
+- `transcripts/01-opencode-gpt5.5-implementation.md` — opencode on GPT-5.5. Design, planning, and subagent-driven implementation of all 8 tasks.
+- `transcripts/02-claude-code-review-and-finishing.jsonl` — Claude Code. Finished reviewing Task 7, found and fixed bugs the automated review had missed, ran the manual smoke test, and pushed the repo.
+
+I switched tools mid-project because I hit my OpenAI usage limit partway through the first session, while mid-debug on a dev-server issue. Claude Code picked up from there. See `PROCESS.md` for the annotated highlights and full reflection.
