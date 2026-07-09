@@ -1,6 +1,6 @@
 # Profile Builder
 
-A single-page conversational travel profile builder for the Atlas take-home exercise.
+A single-page conversational travel profile builder.
 
 ## Quick Start
 
