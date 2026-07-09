@@ -76,6 +76,7 @@ Targeted tests cover destination lookup, zod schemas, persistence, and profile m
 - Add eval fixtures for extraction and conflict detection.
 - Add direct provider adapters for Anthropic and OpenAI.
 - Improve conflict-resolution UI controls.
+- Clean up the UI: tighten spacing/typography, add auto-scroll to the latest message, and give the chat and profile panel a more polished visual pass.
 
 ## At Scale
 

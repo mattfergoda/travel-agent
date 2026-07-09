@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useState } from "react";
 import type { ChatMessage } from "@/lib/shared/schemas";
 
 type LocalMessage = Pick<ChatMessage, "id" | "role" | "content">;
@@ -59,6 +59,13 @@ export function ChatPane({ messages, onTurnComplete }: { messages: ChatMessage[]
     }
   }
 
+  function submitOnEnter(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  }
+
   return (
     <section className="chat-pane">
       <div className="chat-header">
@@ -82,7 +89,12 @@ export function ChatPane({ messages, onTurnComplete }: { messages: ChatMessage[]
       {error && <p className="error-banner">{error}</p>}
 
       <form className="composer" onSubmit={submit}>
-        <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Share a travel preference or ask about a destination..." />
+        <textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={submitOnEnter}
+          placeholder="Share a travel preference or ask about a destination..."
+        />
         <button disabled={isSending}>{isSending ? "Sending" : "Send"}</button>
       </form>
     </section>
