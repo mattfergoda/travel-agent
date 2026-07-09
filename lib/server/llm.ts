@@ -1,5 +1,5 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { generateObject, streamText } from "ai";
+import { generateText, streamText } from "ai";
 import { ExtractionResultSchema, type AppState, type DestinationInfo, type ExtractionResult, type ProviderStatus } from "@/lib/shared/schemas";
 import { logEvent } from "@/lib/server/logging";
 
@@ -37,14 +37,23 @@ function recentMessagesForPrompt(state: AppState) {
   return state.messages.slice(-8).map((message) => `${message.role}: ${message.content}`).join("\n");
 }
 
+function parseJsonObject(text: string): unknown {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced ? fenced[1] : text;
+  const start = candidate.indexOf("{");
+  const end = candidate.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error("LLM response did not contain a JSON object");
+  }
+  return JSON.parse(candidate.slice(start, end + 1));
+}
+
 export async function extractFromMessage(input: { state: AppState; userMessage: string; knownDestinations: string[] }): Promise<ExtractionResult> {
   const started = Date.now();
   const model = getModel();
 
-  const result = await generateObject({
-    model,
-    schema: ExtractionResultSchema,
-    prompt: `You extract travel profile updates from one user message. Return only structured data matching the schema.
+  const prompt = `You extract travel profile updates from one user message. Return ONLY a JSON object, no prose and no markdown fences, matching this shape:
+{"profilePatch": {"homeLocation": string?, "preferredDestinations": string[], "tripTypes": string[], "budgetLevel": "budget"|"midRange"|"luxury"?, "pace": "relaxed"|"balanced"|"packed"?, "lodgingStyle": string?, "foodPreferences": string[], "accessibilityNeeds": string[], "travelCompanions": string[], "preferredSeasons": "spring"|"summer"|"fall"|"winter"[], "constraints": string[], "openQuestions": string[]}, "conflicts": [{"field": string, "existingValue": <any>, "proposedValue": <any>, "reason": string}], "destinationMentions": string[], "resolvedConflictIds": string[], "notesForAssistant": string}
 
 Rules:
 - Do not invent preferences.
@@ -66,11 +75,18 @@ Recent messages:
 ${recentMessagesForPrompt(input.state)}
 
 User message:
-${input.userMessage}`,
-  });
+${input.userMessage}`;
+
+  const result = await generateText({ model, prompt, temperature: 0 });
+  const parsed = ExtractionResultSchema.safeParse(parseJsonObject(result.text));
+
+  if (!parsed.success) {
+    logEvent("llm.extract.invalid", { error: parsed.error.message });
+    return ExtractionResultSchema.parse({});
+  }
 
   logEvent("llm.extract", { latencyMs: Date.now() - started, model: getProviderStatus().model });
-  return ExtractionResultSchema.parse(result.object);
+  return parsed.data;
 }
 
 export function buildAssistantSystemPrompt(input: { state: AppState; destinationResults: Array<{ name: string; info: DestinationInfo | null }>; extraction: ExtractionResult }) {

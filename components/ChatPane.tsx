@@ -52,6 +52,8 @@ export function ChatPane({ messages, onTurnComplete }: { messages: ChatMessage[]
       setLocalMessages([]);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Chat failed");
+      setLocalMessages([]);
+      setDraft(message);
     } finally {
       setIsSending(false);
     }

@@ -98,7 +98,10 @@ export async function POST(request: Request) {
 
     return streamAndPersist({ stream: stream.textStream, storage, state: nextState });
   } catch (error) {
-    await storage.save(stateWithUser);
+    logEvent("chat.error", {
+      message: error instanceof Error ? error.message : "Chat failed",
+      cause: error instanceof Error && error.cause ? String(error.cause) : undefined,
+    });
     return NextResponse.json({ error: error instanceof Error ? error.message : "Chat failed" }, { status: 500 });
   }
 }
