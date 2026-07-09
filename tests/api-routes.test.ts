@@ -62,6 +62,20 @@ describe("chat route", () => {
     expect(body.error).toBe("Invalid chat request");
   });
 
+  it("rejects malformed JSON chat requests", async () => {
+    const { POST } = await import("@/app/api/chat/route");
+
+    const response = await POST(new Request("http://localhost/api/chat", {
+      method: "POST",
+      body: "{",
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Malformed JSON request");
+    expect(load).not.toHaveBeenCalled();
+  });
+
   it("rejects chat requests when provider configuration is missing", async () => {
     delete process.env.OPENROUTER_API_KEY;
     const { POST } = await import("@/app/api/chat/route");

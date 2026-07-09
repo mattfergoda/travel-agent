@@ -49,7 +49,13 @@ function streamAndPersist(input: { stream: AsyncIterable<string>; storage: Retur
 }
 
 export async function POST(request: Request) {
-  const requestJson: unknown = await request.json();
+  let requestJson: unknown;
+  try {
+    requestJson = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Malformed JSON request" }, { status: 400 });
+  }
+
   const parsedRequest = ChatRequestSchema.safeParse(requestJson);
 
   if (!parsedRequest.success) {
